@@ -1,7 +1,10 @@
 {
-  "name": "@darkvisitors/sdk",
+  "name": "@knownagents/sdk",
   "version": "1.6.0",
-  "description": "The official Node.js SDK for Dark Visitors: AI agent analytics (bot traffic), LLM referral tracking, automatic robots.txt",
+  "description": "The official Node.js SDK for Known Agents: AI agent analytics (bot traffic), LLM referral tracking, automatic robots.txt",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "ai analytics",
     "bot traffic",
@@ -28,14 +31,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/darkvisitors/node-sdk.git"
+    "url": "git+https://github.com/knownagents/node-sdk.git"
   },
-  "author": "Dark Visitors <contact@darkvisitors.com>",
+  "author": "Known Agents <contact@knownagents.com>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/darkvisitors/node-sdk/issues"
+    "url": "https://github.com/knownagents/node-sdk/issues"
   },
-  "homepage": "https://github.com/darkvisitors/node-sdk#readme",
+  "homepage": "https://github.com/knownagents/node-sdk#readme",
   "engines": {
     "node": ">=18"
   },

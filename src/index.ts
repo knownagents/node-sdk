@@ -31,11 +31,11 @@ export enum AgentType {
     UndocumentedAIAgent = "Undocumented AI Agent"
 }
 
-export class DarkVisitors {
+export class KnownAgents {
     private readonly accessToken: string
 
     /**
-     * Creates a new instance of the Dark Visitors client.
+     * Creates a new instance of the Known Agents client.
      * 
      * @param accessToken - Your project's access token.
      */
@@ -44,7 +44,7 @@ export class DarkVisitors {
     }
 
     /**
-     * Tracks an agent visit in Dark Visitors agent analytics.
+     * Tracks an agent visit in Known Agents agent analytics.
      *
      * @param visitRequest - The incoming visit request.
      */
@@ -57,7 +57,7 @@ export class DarkVisitors {
             headers: visitRequest.headers
         }
 
-        fetch("https://api.darkvisitors.com/visits", {
+        fetch("https://api.knownagents.com/visits", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${this.accessToken}`,
@@ -70,7 +70,7 @@ export class DarkVisitors {
                 node_package_version: NODE_PACKAGE_VERSION
             })
         }).catch(error => {
-            console.error(`Dark Visitors failed to track visit: ${error.message}`)
+            console.error(`Known Agents failed to track visit: ${error.message}`)
         })
     }
 
@@ -84,7 +84,7 @@ export class DarkVisitors {
      * @throws If the API call fails or returns a non-200 status.
      */
     async generateRobotsTxt(agentTypes: AgentType[], disallow: string = "/"): Promise<string> {
-        const response = await fetch("https://api.darkvisitors.com/robots-txts", {
+        const response = await fetch("https://api.knownagents.com/robots-txts", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${this.accessToken}`,
@@ -100,7 +100,7 @@ export class DarkVisitors {
         if (response.ok) {
             return await response.text()
         } else {
-            throw new Error(`Dark Visitors failed to generate robots.txt: ${response.status} ${response.statusText}`)
+            throw new Error(`Known Agents failed to generate robots.txt: ${response.status} ${response.statusText}`)
         }
     }
 

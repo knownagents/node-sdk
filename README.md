@@ -1,35 +1,35 @@
-# Dark Visitors SDK
+# Known Agents SDK
 
-[![NPM version](https://img.shields.io/npm/v/@darkvisitors/sdk.svg)](https://npmjs.org/package/@darkvisitors/sdk) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/@darkvisitors/sdk)
+[![NPM version](https://img.shields.io/npm/v/@knownagents/sdk.svg)](https://npmjs.org/package/@knownagents/sdk) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/@knownagents/sdk)
 
-This library provides convenient access to [Dark Visitors](https://darkvisitors.com/) from server-side TypeScript or JavaScript.
+This library provides convenient access to [Known Agents](https://knownagents.com/) from server-side TypeScript or JavaScript.
 
 ## Install the Package
 
 Download and include the package via NPM:
 
 ```sh
-npm install @darkvisitors/sdk
+npm install @knownagents/sdk
 ```
 
 ## Initialize the Client
 
-[Sign up](https://darkvisitors.com/sign-up) for Dark Visitors, create a project, and copy your access token from the project's settings page. Then, create a new instance of `DarkVisitors`.
+[Sign up](https://knownagents.com/sign-up) for Known Agents, create a project, and copy your access token from the project's settings page. Then, create a new instance of `KnownAgents`.
 
 ```ts
-import { DarkVisitors } from "@darkvisitors/sdk"
+import { KnownAgents } from "@knownagents/sdk"
 
-const darkVisitors = new DarkVisitors("YOUR_ACCESS_TOKEN")
+const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 ```
 
-## How To Set Up Agent & LLM Analytics ([Full Docs](https://darkvisitors.com/docs/analytics))
+## How To Set Up Agent & LLM Analytics ([Full Docs](https://knownagents.com/docs/analytics))
 
-Get realtime insight into the hidden ecosystem of [crawlers, scrapers, AI agents, and other bots](https://darkvisitors.com/agents) browsing your website. Measure human traffic coming from AI chat and search platforms like ChatGPT, Perplexity, and Gemini.
+Get realtime insight into the hidden ecosystem of [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) browsing your website. Measure human traffic coming from AI chat and search platforms like ChatGPT, Perplexity, and Gemini.
 
 To collect this data, call `trackVisit` for each incoming request in the endpoints where you serve your pages.
 
 ```ts
-darkVisitors.trackVisit(incomingRequest)
+knownAgents.trackVisit(incomingRequest)
 ```
 
 ### Use Middleware if Possible
@@ -40,13 +40,13 @@ Here's an example with Express, but you can apply this same technique with other
 
 ```ts
 import express from "express"
-import { DarkVisitors } from "@darkvisitors/sdk"
+import { KnownAgents } from "@knownagents/sdk"
 
 const app = express()
-const darkVisitors = new DarkVisitors("YOUR_ACCESS_TOKEN")
+const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 
 app.use((req, res, next) => {
-    darkVisitors.trackVisit(req)
+    knownAgents.trackVisit(req)
     next()
 })
 
@@ -63,16 +63,16 @@ app.listen(3000, () => console.log("Server running on port 3000"))
 - Click **Send a Test Visit**
 - Click **Realtime**
 
-If your website is correctly connected, you should see visits from the Dark Visitor agent in the realtime timeline within a few seconds.
+If your website is correctly connected, you should see visits from the Known Agent in the realtime timeline within a few seconds.
 
-## How To Set Up Automatic Robots.txt ([Full Docs](https://darkvisitors.com/docs/robots-txt))
+## How To Set Up Automatic Robots.txt ([Full Docs](https://knownagents.com/docs/robots-txt))
 
-Protect sensitive content from unwanted access and scraping. Generate a continuously updating robots.txt that stays up to date with [all current and future bots](https://darkvisitors.com/agents) in the specified categories automatically.
+Protect sensitive content from unwanted access and scraping. Generate a continuously updating robots.txt that stays up to date with [all current and future bots](https://knownagents.com/agents) in the specified categories automatically.
 
 Use the `generateRobotsTxt` function. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
 
 ```ts
-const robotsTxt = await darkVisitors.generateRobotsTxt([
+const robotsTxt = await knownAgents.generateRobotsTxt([
   AgentType.AIDataScraper,
   AgentType.Scraper,
   AgentType.IntelligenceGatherer,
@@ -94,4 +94,4 @@ The following runtimes are supported:
 
 ## Support
 
-Please [open an issue](https://github.com/darkvisitors/node-sdk/issues) with questions, bugs, or suggestions.
+Please [open an issue](https://github.com/knownagents/node-sdk/issues) with questions, bugs, or suggestions.
