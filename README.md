@@ -29,7 +29,13 @@ Get realtime insight into the hidden ecosystem of [crawlers, scrapers, AI agents
 To collect this data, call `trackVisit` for each incoming request in the endpoints where you serve your pages.
 
 ```ts
-knownAgents.trackVisit(incomingRequest)
+knownAgents.trackVisit(request)
+```
+
+For richer analytics, include the response and duration:
+
+```ts
+knownAgents.trackVisit(request, response, responseDurationInMilliseconds)
 ```
 
 ### Use Middleware if Possible
@@ -46,7 +52,13 @@ const app = express()
 const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 
 app.use((req, res, next) => {
-    knownAgents.trackVisit(req)
+    const start = Date.now()
+    
+    res.on('finish', () => {
+        const duration = Date.now() - start
+        knownAgents.trackVisit(req, res, duration)
+    })
+    
     next()
 })
 
@@ -82,7 +94,7 @@ const robotsTxt = await knownAgents.generateRobotsTxt([
 
 ```
 
-The return value is a plain text robots.txt string. Generate a `robotsTXT` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
+The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
 
 ## Requirements
 

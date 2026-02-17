@@ -1,6 +1,6 @@
 {
   "name": "@knownagents/sdk",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "The official Node.js SDK for Known Agents: AI agent analytics (bot traffic), LLM referral tracking, automatic robots.txt",
   "publishConfig": {
     "access": "public"

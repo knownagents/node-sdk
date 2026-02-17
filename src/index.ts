@@ -1,6 +1,6 @@
-import { IncomingMessage } from "http"
+import { IncomingMessage, ServerResponse } from "http"
 
-const NODE_PACKAGE_VERSION = "1.3.0"
+const NODE_PACKAGE_VERSION = "1.7.0"
 
 export interface Request {
     /** The path of the request's URL (e.g. "/about") */
@@ -9,6 +9,11 @@ export interface Request {
     method: string
     /** The request's HTTP headers */
     headers: Record<string, string | string[] | undefined>
+}
+
+export interface Response {
+    /** The HTTP response status code */
+    statusCode: number
 }
 
 /**
@@ -47,10 +52,12 @@ export class KnownAgents {
      * Tracks an agent visit in Known Agents agent analytics.
      *
      * @param visitRequest - The incoming visit request.
+     * @param visitResponse - The outgoing visit response (optional).
+     * @param responseDurationInMilliseconds - The response duration in milliseconds (optional).
      */
-    trackVisit(request: Request): void
-    trackVisit(request: IncomingMessage): void
-    trackVisit(visitRequest: Request | IncomingMessage): void {
+    trackVisit(request: Request, response?: Response, responseDurationInMilliseconds?: number): void
+    trackVisit(request: IncomingMessage, response?: ServerResponse, responseDurationInMilliseconds?: number): void
+    trackVisit(visitRequest: Request | IncomingMessage, visitResponse?: Response | ServerResponse, responseDurationInMilliseconds?: number): void {
         const request: Request = "path" in visitRequest ? visitRequest : {
             path: visitRequest.url ? new URL(visitRequest.url, "https://example.org/").pathname : "/",
             method: visitRequest.method ?? "GET",
@@ -67,7 +74,10 @@ export class KnownAgents {
                 request_path: request.path,
                 request_method: request.method,
                 request_headers: this.filterHeaders(request.headers),
-                node_package_version: NODE_PACKAGE_VERSION
+                response_status_code: visitResponse?.statusCode,
+                response_duration_in_milliseconds: responseDurationInMilliseconds,
+                node_package_version: NODE_PACKAGE_VERSION,
+                created: new Date().toISOString()
             })
         }).catch(error => {
             console.error(`Known Agents failed to track visit: ${error.message}`)
