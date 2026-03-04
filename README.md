@@ -1,6 +1,6 @@
 # Known Agents SDK
 
-[![NPM version](https://img.shields.io/npm/v/@knownagents/sdk.svg)](https://npmjs.org/package/@knownagents/sdk) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/@knownagents/sdk)
+[![NPM version](https://img.shields.io/npm/v/@knownagents/sdk.svg)](https://npmjs.org/package/@knownagents/sdk)
 
 This library provides convenient access to [Known Agents](https://knownagents.com/) from server-side TypeScript or JavaScript.
 
@@ -76,6 +76,35 @@ app.listen(3000, () => console.log("Server running on port 3000"))
 - Click **Realtime**
 
 If your website is correctly connected, you should see visits from the Known Agent in the realtime timeline within a few seconds.
+
+## How To Set Up Agent Verification ([Full Docs](https://knownagents.com/docs/verification))
+
+Identify and verify agents from network requests using Web Bot Auth (HTTP message signatures) or other methods like IP matching. This helps you distinguish legitimate bots from impersonators.
+
+Use the `verifyAgent` function to check if a request is from a legitimate agent by passing in the incoming request object.
+
+```ts
+const verification = await knownAgents.verifyAgent(request)
+
+if (verification.result === "verified") {
+    // Agent is legitimate
+} else if (verification.result === "verification_failed") {
+    // Agent is not legitimate
+}
+```
+
+The function returns an object with the following fields:
+
+- `result`: The verification result:
+  - `"verified"`: The agent is identified and verified
+  - `"verification_failed"`: The agent was identified but could not be verified
+  - `"unknown_agent"`: The agent is not in our database
+  - `"not_verifiable"`: The agent cannot be verified (no verification method available)
+- `agent_id`: The unique ID of the agent (if identified)
+- `agent_token`: The name of the agent (e.g. `"Googlebot"`) (if identified)
+- `agent_url`: The documentation URL of the agent (if identified)
+- `agent_type_name`: The type of agent (e.g. `"AI Agent"`) (if identified)
+- `operator_name`: The company behind the agent (e.g. `"Google"`) (if identified)
 
 ## How To Set Up Automatic Robots.txt ([Full Docs](https://knownagents.com/docs/robots-txt))
 
