@@ -77,11 +77,30 @@ app.listen(3000, () => console.log("Server running on port 3000"))
 
 If your website is correctly connected, you should see visits from the Known Agent in the realtime timeline within a few seconds.
 
-## How To Set Up Agent Verification ([Full Docs](https://knownagents.com/docs/verification))
+## How To Set Up Automatic Robots.txt ([Full Docs](https://knownagents.com/docs/robots-txt))
 
-Identify and verify agents from network requests using Web Bot Auth (HTTP message signatures) or other methods like IP matching. This helps you distinguish legitimate bots from impersonators.
+Protect sensitive content from unwanted access and scraping. Generate a continuously updating robots.txt that stays up to date with [all current and future bots](https://knownagents.com/agents) in the specified categories automatically.
 
-Use the `verifyAgent` function to check if a request is from a legitimate agent by passing in the incoming request object.
+Use the `generateRobotsTXT` function. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
+
+```ts
+const robotsTxt = await knownAgents.generateRobotsTXT([
+  AgentType.AIDataScraper,
+  AgentType.Scraper,
+  AgentType.IntelligenceGatherer,
+  AgentType.SEOCrawler
+  // ...
+], "/")
+
+```
+
+The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
+
+## How To Use Agent Verification ([Full Docs](https://knownagents.com/docs/verification))
+
+Use the `verifyAgent` function to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods.
+
+Call `verifyAgent` with the incoming request.
 
 ```ts
 const verification = await knownAgents.verifyAgent(request)
@@ -105,25 +124,6 @@ The function returns an object with the following fields:
 - `agent_url`: The documentation URL of the agent (if identified)
 - `agent_type_name`: The type of agent (e.g. `"AI Agent"`) (if identified)
 - `operator_name`: The company behind the agent (e.g. `"Google"`) (if identified)
-
-## How To Set Up Automatic Robots.txt ([Full Docs](https://knownagents.com/docs/robots-txt))
-
-Protect sensitive content from unwanted access and scraping. Generate a continuously updating robots.txt that stays up to date with [all current and future bots](https://knownagents.com/agents) in the specified categories automatically.
-
-Use the `generateRobotsTxt` function. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
-
-```ts
-const robotsTxt = await knownAgents.generateRobotsTxt([
-  AgentType.AIDataScraper,
-  AgentType.Scraper,
-  AgentType.IntelligenceGatherer,
-  AgentType.SEOCrawler
-  // ...
-], "/")
-
-```
-
-The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
 
 ## Requirements
 

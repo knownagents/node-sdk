@@ -93,35 +93,7 @@ export class KnownAgents {
             console.error(`Known Agents failed to track visit: ${error.message}`)
         })
     }
-
-    /**
-     * Verifies if an agent request is legitimate by checking it against Known Agents.
-     *
-     * @param request - The incoming request.
-     * @returns A promise that resolves to the verification result.
-     * @throws If the API call fails or returns a non-200 status.
-     */
-    async verifyAgent(request: Request | IncomingMessage): Promise<VerificationResult> {
-        const response = await fetch("https://api.knownagents.com/agent-verifications", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${this.accessToken}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                request_path: "path" in request ? request.path : request.url,
-                request_headers: this.filterHeaders(request.headers),
-                node_package_version: NODE_PACKAGE_VERSION
-            })
-        })
-
-        if (response.ok) {
-            return await response.json()
-        } else {
-            throw new Error(`Known Agents failed to verify agent: ${response.status} ${response.statusText}`)
-        }
-    }
-
+    
     /**
      * Generates a `robots.txt` file that disallows the specified agent types.
      * Cache and serve this string at your website’s `/robots.txt` endpoint.
@@ -149,6 +121,34 @@ export class KnownAgents {
             return await response.text()
         } else {
             throw new Error(`Known Agents failed to generate robots.txt: ${response.status} ${response.statusText}`)
+        }
+    }
+    
+    /**
+     * Verifies if an agent request is legitimate by checking it against Known Agents.
+     *
+     * @param request - The incoming request.
+     * @returns A promise that resolves to the verification result.
+     * @throws If the API call fails or returns a non-200 status.
+     */
+    async verifyAgent(request: Request | IncomingMessage): Promise<VerificationResult> {
+        const response = await fetch("https://api.knownagents.com/agent-verifications", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${this.accessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                request_path: "path" in request ? request.path : request.url,
+                request_headers: this.filterHeaders(request.headers),
+                node_package_version: NODE_PACKAGE_VERSION
+            })
+        })
+
+        if (response.ok) {
+            return await response.json()
+        } else {
+            throw new Error(`Known Agents failed to verify agent: ${response.status} ${response.statusText}`)
         }
     }
 
