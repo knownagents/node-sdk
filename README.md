@@ -53,7 +53,6 @@ const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 
 app.use((req, res, next) => {
     const start = Date.now()
-    
     res.on('finish', () => {
         const duration = Date.now() - start
         knownAgents.trackVisit(req, res, duration)
@@ -98,7 +97,7 @@ The return value is a plain text robots.txt string. Generate a `robotsTxt` perio
 
 ## How To Use Agent Verification ([Full Docs](https://knownagents.com/docs/verification))
 
-Use the `verifyAgent` function to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods.
+Use the `verifyAgent` function to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This can be useful for implementing access policies based on verified agent identity.
 
 Call `verifyAgent` with the incoming request.
 
