@@ -3,7 +3,7 @@ import { IncomingMessage, ServerResponse } from "http"
 const NODE_PACKAGE_VERSION = "1.7.0"
 
 export interface Request {
-    /** The path of the request's URL (e.g. "/about") */
+    /** The URL of the request, including the path and query string (e.g. "/about?foo=bar") */
     path: string
     /** The request's HTTP method (e.g. "GET", "POST") */
     method: string
@@ -51,19 +51,13 @@ export class KnownAgents {
     /**
      * Tracks an agent visit in Known Agents agent analytics.
      *
-     * @param visitRequest - The incoming visit request.
-     * @param visitResponse - The outgoing visit response (optional).
+     * @param request - The incoming request.
+     * @param response - The outgoing response (optional).
      * @param responseDurationInMilliseconds - The response duration in milliseconds (optional).
      */
     trackVisit(request: Request, response?: Response, responseDurationInMilliseconds?: number): void
     trackVisit(request: IncomingMessage, response?: ServerResponse, responseDurationInMilliseconds?: number): void
-    trackVisit(visitRequest: Request | IncomingMessage, visitResponse?: Response | ServerResponse, responseDurationInMilliseconds?: number): void {
-        const request: Request = "path" in visitRequest ? visitRequest : {
-            path: visitRequest.url ? new URL(visitRequest.url, "https://example.org/").pathname : "/",
-            method: visitRequest.method ?? "GET",
-            headers: visitRequest.headers
-        }
-
+    trackVisit(request: Request | IncomingMessage, response?: Response | ServerResponse, responseDurationInMilliseconds?: number): void {
         fetch("https://api.knownagents.com/visits", {
             method: "POST",
             headers: {
@@ -71,10 +65,10 @@ export class KnownAgents {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                request_path: request.path,
+                request_path: "path" in request ? request.path : request.url,
                 request_method: request.method,
                 request_headers: this.filterHeaders(request.headers),
-                response_status_code: visitResponse?.statusCode,
+                response_status_code: response?.statusCode,
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
                 node_package_version: NODE_PACKAGE_VERSION,
                 created: new Date().toISOString()
@@ -93,7 +87,7 @@ export class KnownAgents {
      * @returns The generated `robots.txt` as a string.
      * @throws If the API call fails or returns a non-200 status.
      */
-    async generateRobotsTxt(agentTypes: AgentType[], disallow: string = "/"): Promise<string> {
+    async generateRobotsTXT(agentTypes: AgentType[], disallow: string = "/"): Promise<string> {
         const response = await fetch("https://api.knownagents.com/robots-txts", {
             method: "POST",
             headers: {
