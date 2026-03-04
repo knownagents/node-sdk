@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http"
 
-const NODE_PACKAGE_VERSION = "1.8.0"
+const NODE_PACKAGE_VERSION = "1.9.0"
 
 export interface Request {
     /** The URL of the request, including the path and query string (e.g. "/about?foo=bar") */
