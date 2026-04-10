@@ -68,6 +68,33 @@ app.get("/", (req, res) => {
 app.listen(3000, () => console.log("Server running on port 3000"))
 ```
 
+### Batch Requests If Possible
+
+For high-traffic websites, batch multiple visits together and send them periodically (e.g. every 30 seconds) using `trackVisits`:
+
+```ts
+import { VisitRequest } from "@knownagents/sdk"
+
+const visits: VisitRequest[] = []
+
+// Collect visits
+visits.push({
+    request_path: req.url,
+    request_method: req.method,
+    request_headers: req.headers,
+    response_status_code: res.statusCode,
+    response_duration_in_milliseconds: duration,
+    created: new Date().toISOString()
+})
+
+// Send batch periodically
+setInterval(() => {
+    if (visits.length > 0) {
+        knownAgents.trackVisits(visits.splice(0))
+    }
+}, 30000)
+```
+
 ### Test Your Integration
 
 - Open your project's settings page
@@ -95,25 +122,45 @@ const robotsTxt = await knownAgents.generateRobotsTXT([
 
 The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
 
-## How To Use Agent Verification ([Full Docs](https://knownagents.com/docs/verification))
+## How To Use Agent Identification ([Full Docs](https://knownagents.com/docs/identification))
 
-Use the `verifyAgent` function to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This can be useful for implementing access policies based on verified agent identity.
+Use the `identifyAgent` and `identifyAgents` functions to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This can be useful for implementing access policies based on verified agent identity or enriching your own datasets.
 
-Call `verifyAgent` with the incoming request.
+### Identify a Single Request
+
+Call `identifyAgent` with the incoming request.
 
 ```ts
-const verification = await knownAgents.verifyAgent(request)
+const identification = await knownAgents.identifyAgent(request)
 
-if (verification.result === "verified") {
+if (identification.result === "verified") {
     // Agent is legitimate
-} else if (verification.result === "verification_failed") {
+} else if (identification.result === "verification_failed") {
     // Agent is not legitimate
 }
 ```
 
-The function returns an object with the following fields:
+### Identify Multiple Requests
 
-- `result`: The verification result:
+Use `identifyAgents` to identify multiple requests at once:
+
+```ts
+const identifications = await knownAgents.identifyAgents([
+    {
+        id: "request-1",
+        request_headers: request1.headers
+    },
+    {
+        id: "request-2",
+        request_headers: request2.headers
+    }
+])
+```
+
+The functions return an object (or array of objects) with the following fields:
+
+- `id`: The identifier from the request (if provided)
+- `result`: The identification result:
   - `"verified"`: The agent is identified and verified
   - `"verification_failed"`: The agent was identified but could not be verified
   - `"unknown_agent"`: The agent is not in our database
