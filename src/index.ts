@@ -126,12 +126,11 @@ export class KnownAgents {
      */
     trackVisit(request: Request | IncomingMessage, response?: Response | ServerResponse, responseDurationInMilliseconds?: number): void {
         const path = "path" in request ? request.path : request.url
+        const responseHeaders = response instanceof ServerResponse ? response.getHeaders() as Record<string, string | string[] | undefined> : response?.headers
 
         if (!path || this.isPathExcluded(path)) {
             return
         }
-
-        const responseHeaders = response instanceof ServerResponse ? response.getHeaders() as Record<string, string | string[] | undefined> : response?.headers
 
         fetch("https://api.knownagents.com/visits", {
             method: "POST",
