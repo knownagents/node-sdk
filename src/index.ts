@@ -20,6 +20,8 @@ export interface Request {
 export interface Response {
     /** The HTTP response status code (e.g. 200, 404) */
     statusCode: number
+    /** The HTTP response headers */
+    headers?: Record<string, string | string[] | undefined>
 }
 
 /**
@@ -123,6 +125,14 @@ export class KnownAgents {
      * @param responseDurationInMilliseconds - The time taken to process the request in milliseconds (optional).
      */
     trackVisit(request: Request | IncomingMessage, response?: Response | ServerResponse, responseDurationInMilliseconds?: number): void {
+        const path = "path" in request ? request.path : request.url
+
+        if (!path || this.isPathExcluded(path)) {
+            return
+        }
+
+        const responseHeaders = response instanceof ServerResponse ? response.getHeaders() as Record<string, string | string[] | undefined> : response?.headers
+
         fetch("https://api.knownagents.com/visits", {
             method: "POST",
             headers: {
@@ -130,10 +140,11 @@ export class KnownAgents {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                request_path: "path" in request ? request.path : request.url,
+                request_path: path,
                 request_method: request.method,
                 request_headers: this.filterHeaders(request.headers),
                 response_status_code: response?.statusCode,
+                response_headers: responseHeaders ? this.filterHeaders(responseHeaders) : undefined,
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
                 created: new Date().toISOString()
             })
@@ -150,13 +161,29 @@ export class KnownAgents {
      * @param visits - An array of visit tracking requests.
      */
     trackVisits(visits: VisitRequest[]): void {
+        const filteredVisits = visits
+            .filter((visit) => {
+                return !this.isPathExcluded(visit.request_path)
+            })
+            .map((visit) => {
+                return {
+                    ...visit,
+                    request_headers: this.filterHeaders(visit.request_headers),
+                    response_headers: visit.response_headers ? this.filterHeaders(visit.response_headers) : undefined,
+                }
+            })
+
+        if (filteredVisits.length === 0) {
+            return
+        }
+
         fetch("https://api.knownagents.com/visits", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${this.accessToken}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(visits)
+            body: JSON.stringify(filteredVisits)
         }).catch(error => {
             console.error(`Known Agents failed to track visits: ${error.message}`)
         })
@@ -234,7 +261,12 @@ export class KnownAgents {
                 "Authorization": `Bearer ${this.accessToken}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(requests)
+            body: JSON.stringify(requests.map(request => {
+                return {
+                    ...request,
+                    request_headers: this.filterHeaders(request.request_headers),
+                }
+            }))
         })
 
         if (response.ok) {
@@ -245,6 +277,65 @@ export class KnownAgents {
     }
 
     // Helpers
+
+    private isPathExcluded(path: string): boolean {
+        const excludedPrefixes = [
+            "/_next/",
+            "/_nuxt/",
+            "/_astro/",
+            "/_app/",
+            "/@vite/",
+            "/@fs/",
+            "/@id/",
+            "/node_modules/",
+            "/_vercel/",
+        ]
+
+        const excludedSuffixes = [
+            ".ico",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".svg",
+            ".bmp",
+            ".tiff",
+            ".avif",
+            ".css",
+            ".js",
+            ".mjs",
+            ".ts",
+            ".jsx",
+            ".tsx",
+            ".map",
+            ".woff",
+            ".woff2",
+            ".ttf",
+            ".otf",
+            ".eot",
+            ".mp3",
+            ".mp4",
+            ".webm",
+            ".wav",
+            ".ogg",
+            ".mov",
+            ".avi",
+            ".flv",
+            ".m4v",
+            ".rss",
+            ".json",
+            ".xml",
+            ".pdf",
+            ".zip",
+        ]
+
+        return excludedPrefixes.some((excludedPrefix) => {
+            return path.toLowerCase().startsWith(excludedPrefix.toLowerCase())
+        }) || excludedSuffixes.some((excludedSuffix) => {
+            return path.toLowerCase().endsWith(excludedSuffix.toLowerCase())
+        })
+    }
 
     private filterHeaders(headers: Record<string, string | string[] | undefined>): Record<string, string | string[] | undefined> {
         const excludedHeaders = new Set([
