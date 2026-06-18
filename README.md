@@ -2,7 +2,7 @@
 
 [![NPM version](https://img.shields.io/npm/v/@knownagents/sdk.svg)](https://npmjs.org/package/@knownagents/sdk)
 
-This library provides convenient access to [Known Agents](https://knownagents.com/) from server-side TypeScript or JavaScript.
+This library provides convenient access to [Known Agents](https://knownagents.com/) from server-side Node.js applications written in TypeScript or JavaScript.
 
 ## Install the Package
 
@@ -24,25 +24,35 @@ const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 
 ## How To Set Up Agent & LLM Analytics ([Full Docs](https://knownagents.com/docs/analytics))
 
-Get realtime insight into the hidden ecosystem of [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) browsing your website. Measure human traffic coming from AI chat and search platforms like ChatGPT, Perplexity, and Gemini.
+Get realtime insight into the hidden ecosystem of [AI agents and other bots](https://knownagents.com/agents) browsing your website, REST APIs, and [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) servers. Measure human traffic coming from AI chat and search platforms like ChatGPT, Perplexity, and Gemini.
 
-To collect this data, call `trackVisit` for each incoming request in the endpoints where you serve your pages.
+### Track Pageview and REST Calls
 
-```ts
-knownAgents.trackVisit(request)
-```
-
-For richer analytics, include the response and duration:
+To collect pageview and REST API analytics, call `trackPageviewOrRESTCall` with the incoming Node.js request and response.
 
 ```ts
-knownAgents.trackVisit(request, response, responseDurationInMilliseconds)
+knownAgents.trackPageviewOrRESTCall(request, response)
 ```
 
-### Use Middleware if Possible
+For REST APIs that return [ACP (Agentic Commerce Protocol)](https://www.agenticcommerce.dev/) or [UCP (Universal Commerce Protocol)](https://ucp.dev/) commerce metadata, include the response body:
 
-If you can, add this in middleware to track incoming requests to all pages from a single place.
+```ts
+knownAgents.trackPageviewOrRESTCall(request, response, {
+    restACPResponseBody: acpResponseBody
+})
+```
 
-Here's an example with Express, but you can apply this same technique with other frameworks:
+```ts
+knownAgents.trackPageviewOrRESTCall(request, response, {
+    restUCPResponseBody: ucpResponseBody
+})
+```
+
+The SDK waits for the response to finish, then sends status, headers, duration, and any commerce metadata. Sensitive headers are filtered automatically.
+
+#### Use Middleware if Possible
+
+If your framework supports middleware, call `trackPageviewOrRESTCall` there so pageviews and REST calls are tracked from a single place. [MCP](https://modelcontextprotocol.io/) requests are skipped automatically.
 
 ```ts
 import express from "express"
@@ -51,46 +61,75 @@ import { KnownAgents } from "@knownagents/sdk"
 const app = express()
 const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 
-app.use((req, res, next) => {
-    const start = Date.now()
-    res.on('finish', () => {
-        const duration = Date.now() - start
-        knownAgents.trackVisit(req, res, duration)
-    })
-    
+app.use((request, response, next) => {
+    knownAgents.trackPageviewOrRESTCall(request, response)
     next()
 })
 
-app.get("/", (req, res) => {
-    res.send("Hello, world!")
+app.get("/", (request, response) => {
+    response.send("Hello, world!")
 })
 
 app.listen(3000, () => console.log("Server running on port 3000"))
 ```
 
-### Batch Requests If Possible
+### Track MCP Calls
 
-For high-traffic websites, batch multiple visits together and send them periodically (e.g. every 30 seconds) using `trackVisits`:
+For [MCP](https://modelcontextprotocol.io/) servers that use `StreamableHTTPServerTransport`, call `trackMCPCall` after connecting the transport and before the transport handles the request.
+
+For MCP calls that return [ACP](https://www.agenticcommerce.dev/) or [UCP](https://ucp.dev/) commerce metadata, the SDK captures the relevant currency and total amount automatically.
+
+Use this order in your MCP HTTP handler:
 
 ```ts
-import { VisitRequest } from "@knownagents/sdk"
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
 
-const visits: VisitRequest[] = []
-
-// Collect visits
-visits.push({
-    request_path: req.url,
-    request_method: req.method,
-    request_headers: req.headers,
-    response_status_code: res.statusCode,
-    response_duration_in_milliseconds: duration,
-    created: new Date().toISOString()
+const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined
 })
 
-// Send batch periodically
+await mcpServer.connect(transport)
+knownAgents.trackMCPCall(request, response, transport)
+await transport.handleRequest(request, response, parsedBody)
+```
+
+Use `trackVisits` instead if the same transport instance handles concurrent requests.
+
+### Batching
+
+For high-traffic websites, batch multiple visits together and send them periodically (e.g. every 30 seconds) using `trackVisits`. `trackVisits` can also batch MCP visits; if you do that, include the MCP fields in each `VisitRequest` and do not also call `trackMCPCall` for the same requests. Here's an Express example:
+
+```ts
+import express from "express"
+import { KnownAgents, type VisitRequest } from "@knownagents/sdk"
+
+const app = express()
+const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
+const visits: VisitRequest[] = []
+
+app.use((request, response, next) => {
+    const created = new Date()
+
+    response.once("finish", () => {
+        visits.push({
+            request_path: request.url,
+            request_method: request.method,
+            request_headers: request.headers,
+            response_status_code: response.statusCode,
+            response_headers: response.getHeaders(),
+            response_duration_in_milliseconds: Date.now() - created.getTime(),
+            created: created.toISOString()
+        })
+    })
+
+    next()
+})
+
 setInterval(() => {
-    if (visits.length > 0) {
-        knownAgents.trackVisits(visits.splice(0))
+    const batch = visits.splice(0)
+
+    if (batch.length > 0) {
+        knownAgents.trackVisits(batch)
     }
 }, 30000)
 ```
@@ -110,21 +149,21 @@ Protect sensitive content from unwanted access and scraping. Generate a continuo
 Use the `generateRobotsTXT` function. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
 
 ```ts
-const robotsTxt = await knownAgents.generateRobotsTXT([
-  AgentType.AIDataScraper,
-  AgentType.Scraper,
-  AgentType.IntelligenceGatherer,
-  AgentType.SEOCrawler
-  // ...
-], "/")
+import { AgentType } from "@knownagents/sdk"
 
+const robotsTxt = await knownAgents.generateRobotsTXT([
+    AgentType.AIDataScraper,
+    AgentType.AIDataProvider,
+    AgentType.Scraper,
+    AgentType.SEOCrawler
+], "/")
 ```
 
 The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day), then cache and serve it from your website's `/robots.txt` endpoint.
 
 ## How To Use Agent Identification ([Full Docs](https://knownagents.com/docs/identification))
 
-Use the `identifyAgent` and `identifyAgents` functions to [identify](https://knownagents.com/agents) and verify agents from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This can be useful for implementing access policies based on verified agent identity or enriching your own datasets.
+Use the `identifyAgent` and `identifyAgents` functions to identify and verify [AI agents and bots](https://knownagents.com/agents) from network requests using Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This can be useful for implementing access policies based on verified agent identity or enriching your own datasets.
 
 ### Identify a Single Request
 
@@ -134,9 +173,9 @@ Call `identifyAgent` with the incoming request.
 const identification = await knownAgents.identifyAgent(request)
 
 if (identification.result === "verified") {
-    // Agent is legitimate
+    handleVerifiedAgent(identification)
 } else if (identification.result === "verification_failed") {
-    // Agent is not legitimate
+    handleFailedVerification(identification)
 }
 ```
 
@@ -177,7 +216,7 @@ TypeScript >= 4.7 is supported.
 
 The following runtimes are supported:
 
-- Node.js 18 LTS or later ([non-EOL](https://endoflife.date/nodejs)) versions.
+- Node.js 18 LTS or later ([non-EOL](https://endoflife.date/nodejs))
 
 ## Support
 

@@ -1,10 +1,14 @@
 {
   "name": "@knownagents/sdk",
-  "version": "1.11.0",
+  "version": "2.0.0",
   "description": "The official Node.js SDK for Known Agents: AI agent analytics (bot traffic), LLM referral tracking, automatic robots.txt, agent verification",
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "keywords": [
     "ai analytics",
     "bot traffic",
@@ -16,6 +20,12 @@
     "bot detection",
     "crawler detection",
     "llm analytics",
+    "mcp analytics",
+    "mcp server analytics",
+    "model context protocol",
+    "agentic commerce protocol",
+    "universal commerce protocol",
+    "commerce analytics",
     "robots.txt",
     "automatic robots.txt",
     "robots.txt generator",
@@ -54,5 +64,8 @@
   "devDependencies": {
     "@types/node": "^22.19.17",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }
