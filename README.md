@@ -188,15 +188,15 @@ These methods return an object (or array of objects) with the following fields:
 
 - `id`: The identifier from the request (if provided)
 - `result`: The identification result:
-  - `"verified"`: The agent is identified and verified
-  - `"verification_failed"`: The agent was identified but could not be verified
-  - `"unknown_agent"`: The agent is not in our database
-  - `"not_verifiable"`: The agent cannot be verified (no verification method available)
+  - `"verified"`: The agent was identified and verified
+  - `"verification_failed"`: The agent was identified but failed verification (it was spoofed)
+  - `"not_verifiable"`: The agent was identified but could not be verified (no method available)
+  - `"unknown_agent"`: Not an agent, or the agent is not in the database
 - `agent_id`: The unique ID of the agent (if identified)
-- `agent_token`: The name of the agent (e.g. `"Googlebot"`) (if identified)
+- `agent_token`: The name of the agent (e.g. `"Claude-User"`) (if identified)
 - `agent_url`: The documentation URL of the agent (if identified)
-- `agent_type_name`: The type of agent (e.g. `"AI Agent"`) (if identified)
-- `operator_name`: The company behind the agent (e.g. `"Google"`) (if identified)
+- `agent_type_name`: The type of agent (e.g. `"AI Assistant"`) (if identified)
+- `operator_name`: The company operating the agent (e.g. `"Anthropic"`) (if identified)
 
 ## Requirements
 
