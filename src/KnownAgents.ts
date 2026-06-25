@@ -1,16 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http"
 import type { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import {
-    getMCPACPCurrencyIfPossible,
-    getMCPACPTotalAmountIfPossible,
-    getMCPUCPCurrencyIfPossible,
-    getMCPUCPTotalAmountIfPossible,
-    getRESTACPCurrencyIfPossible,
-    getRESTACPTotalAmountIfPossible,
-    getRESTUCPCurrencyIfPossible,
-    getRESTUCPTotalAmountIfPossible
-} from "./commerce"
-import { getFilteredHeaders, getIsMCPCall } from "./headers"
+import { getFilteredHeaders, getIsACPCall, getIsMCPCall, getIsUCPCall } from "./headers"
 import { getIsPathExcluded } from "./paths"
 import type {
     AgentType,
@@ -19,41 +9,6 @@ import type {
     TrackPageviewOrRESTCallOptions,
     VisitRequest
 } from "./types"
-
-interface MCPRequestBody {
-    jsonrpc: string
-    method: string
-    params?: {
-        name?: string
-        clientInfo?: {
-            name?: string
-            version?: string
-        }
-    }
-}
-
-interface MCPResponseBody {
-    jsonrpc: string
-    result?: {
-        isError?: boolean
-        currency?: string
-        totals?: {
-            type?: string
-            amount?: number
-        }[]
-        structuredContent?: {
-            currency?: string
-            totals?: {
-                type?: string
-                amount?: number
-            }[]
-        }
-    }
-    error?: {
-        code?: number
-        message?: string
-    }
-}
 
 /**
  * Server-side client for Known Agents analytics, robots.txt generation, and agent identification.
@@ -100,10 +55,8 @@ export class KnownAgents {
                 response_status_code: response?.statusCode,
                 response_headers: response.getHeaders(),
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
-                acp_response_currency: options?.restACPResponseBody ? getRESTACPCurrencyIfPossible(options?.restACPResponseBody) : undefined,
-                acp_response_total_amount: options?.restACPResponseBody ? getRESTACPTotalAmountIfPossible(options?.restACPResponseBody) : undefined,
-                ucp_response_currency: options?.restUCPResponseBody ? getRESTUCPCurrencyIfPossible(options?.restUCPResponseBody) : undefined,
-                ucp_response_total_amount: options?.restUCPResponseBody ? getRESTUCPTotalAmountIfPossible(options?.restUCPResponseBody) : undefined,
+                acp_response_body: options?.acpResponseBody,
+                ucp_response_body: options?.ucpResponseBody,
                 created: created.toISOString()
             }
 
@@ -128,28 +81,27 @@ export class KnownAgents {
      * @param transport - The MCP streamable HTTP transport handling the request.
      */
     trackMCPCall(request: IncomingMessage, response: ServerResponse, transport: StreamableHTTPServerTransport): void {
-        const isMCPCall = getIsMCPCall(request.headers)
         const path = request.url
         const method = request.method
 
-        if (!isMCPCall || !path || getIsPathExcluded(path) || !method) {
+        if (!path || getIsPathExcluded(path) || !method) {
             return
         }
 
         const created = new Date()
 
-        let mcpRequestBody: MCPRequestBody | undefined
-        let mcpResponseBody: MCPResponseBody | undefined
+        let mcpRequestBody: any
+        let mcpResponseBody: any
 
         const originalTransportOnMessage = transport.onmessage
         transport.onmessage = (message, extra): void => {
-            mcpRequestBody = message as MCPRequestBody
+            mcpRequestBody = message
             originalTransportOnMessage?.(message, extra)
         }
     
         const originalTransportSend = transport.send
         transport.send = async (message, options): Promise<void> => {
-            mcpResponseBody = message as MCPResponseBody
+            mcpResponseBody = message
             await originalTransportSend.call(transport, message, options)
         }
 
@@ -166,6 +118,7 @@ export class KnownAgents {
             }
 
             const responseDurationInMilliseconds = Date.now() - created.getTime()
+            const mcpResponseResult = mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result
 
             const visitRequest: VisitRequest = {
                 request_path: path,
@@ -181,10 +134,8 @@ export class KnownAgents {
                 mcp_response_result_is_error: mcpResponseBody.result?.isError,
                 mcp_response_error_code: mcpResponseBody.error?.code,
                 mcp_response_error_message: mcpResponseBody.error?.message,
-                acp_response_currency: getMCPACPCurrencyIfPossible(request, mcpResponseBody),
-                acp_response_total_amount: getMCPACPTotalAmountIfPossible(request, mcpResponseBody),
-                ucp_response_currency: getMCPUCPCurrencyIfPossible(request, mcpResponseBody),
-                ucp_response_total_amount: getMCPUCPTotalAmountIfPossible(request, mcpResponseBody),
+                acp_response_body: getIsACPCall(request.headers) ? mcpResponseResult : undefined,
+                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseResult : undefined,
                 created: created.toISOString()
             }
 

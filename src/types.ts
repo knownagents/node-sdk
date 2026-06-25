@@ -1,39 +1,13 @@
 import type { IncomingHttpHeaders, OutgoingHttpHeaders } from "http"
 
 /**
- * ACP response details from a REST API call.
- */
-export interface RESTACPResponseBody {
-    /** The response currency, usually an ISO 4217 code. */
-    currency?: string
-    /** ACP totals returned by the REST endpoint. The "total" item is sent to Known Agents. */
-    totals?: {
-        type?: string
-        amount?: number
-    }[]
-}
-
-/**
- * UCP response details from a REST API call.
- */
-export interface RESTUCPResponseBody {
-    /** The response currency, usually an ISO 4217 code. */
-    currency?: string
-    /** UCP totals returned by the REST endpoint. The "total" item is sent to Known Agents. */
-    totals?: {
-        type?: string
-        amount?: number
-    }[]
-}
-
-/**
  * Additional metadata to include when tracking a pageview or REST API call.
  */
 export interface TrackPageviewOrRESTCallOptions {
-    /** ACP response body from the REST endpoint. */
-    restACPResponseBody?: RESTACPResponseBody
-    /** UCP response body from the REST endpoint. */
-    restUCPResponseBody?: RESTUCPResponseBody
+    /** The ACP response body. */
+    acpResponseBody?: Record<string, unknown>
+    /** The UCP response body. */
+    ucpResponseBody?: Record<string, unknown>
 }
 
 /**
@@ -67,14 +41,10 @@ export interface VisitRequest {
     mcp_response_error_code?: number
     /** The MCP response error message */
     mcp_response_error_message?: string
-    /** The ACP response currency */
-    acp_response_currency?: string
-    /** The ACP response "total" amount */
-    acp_response_total_amount?: number
-    /** The UCP response currency */
-    ucp_response_currency?: string
-    /** The UCP response "total" amount */
-    ucp_response_total_amount?: number
+    /** The ACP response body */
+    acp_response_body?: Record<string, unknown>
+    /** The UCP response body */
+    ucp_response_body?: Record<string, unknown>
     /** The timestamp when the visit occurred (ISO 8601 format) */
     created?: string
 }
