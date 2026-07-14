@@ -22,47 +22,32 @@ import { KnownAgents } from "@knownagents/sdk"
 const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
 ```
 
-## How To Set Up Agent & LLM Analytics ([Full Docs](https://knownagents.com/docs/analytics))
+To batch visits, set the visit event queue size and flush interval:
+
+```ts
+const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN", {
+    flushQueueSize: 1000,
+    flushIntervalInMilliseconds: 10000
+})
+```
+
+The entire visit event queue is uploaded when it reaches `flushQueueSize` or when the flush interval elapses after the first visit event enters an empty queue.
+
+## Send Visit Events ([Agent Analytics](https://knownagents.com/products/agent-analytics), [LLM Referral Tracking](https://knownagents.com/products/llm-referral-tracking))
 
 Get realtime insight into how [AI agents and other bots](https://knownagents.com/agents) browse your web pages, call your [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) endpoints, and purchase products through your [ACP (Agentic Commerce Protocol)](https://www.agenticcommerce.dev/) and [UCP (Universal Commerce Protocol)](https://ucp.dev/) shopping flows. Measure human traffic from AI chat and search platforms like ChatGPT, Claude, and Gemini.
 
-### Track Pageviews and REST Calls
+### Pageviews and REST Calls
 
-Call `trackPageviewOrRESTCall` with the incoming request and outgoing response. If you can, do this in middleware.
+Call `trackPageviewOrRESTCall` with the incoming request and outgoing response. If you can, do this in middleware. This method skips MCP calls automatically.
 
 ```ts
 knownAgents.trackPageviewOrRESTCall(request, response)
 ```
 
-MCP calls are skipped automatically by `trackPageviewOrRESTCall`. Use `trackMCPCall` to track MCP calls.
-
-High-traffic websites should not use this method. Instead, batch visits and send them periodically with `trackVisits` (see below).
-
-#### Agentic Commerce Calls
-
-For REST implementations of ACP and UCP, include the response body.
-
-```ts
-// For ACP calls ...
-
-knownAgents.trackPageviewOrRESTCall(request, response, {
-    acpResponseBody: acpResponseBody
-})
-```
-
-```ts
-// For UCP calls ...
-
-knownAgents.trackPageviewOrRESTCall(request, response, {
-    ucpResponseBody: ucpResponseBody
-})
-```
-
-### Track MCP Calls
+### MCP Calls (Optional)
 
 For MCP servers that use `StreamableHTTPServerTransport`, call `trackMCPCall` after connecting the transport and before the transport handles the request.
-
-High-traffic websites, or those that use the same transport instance to handle multiple concurrent requests, should not use this method. Instead, batch visits and send them periodically with `trackVisits` (see below).
 
 ```ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -88,49 +73,27 @@ knownAgents.trackMCPCall(request, response, transport)
 await transport.handleRequest(request, response, parsedBody)
 ```
 
-#### Agentic Commerce Calls
+### Agentic Commerce Interactions (Optional)
 
-This method will track MCP implementations of ACP and UCP automatically.
-
-### Batching for High-Traffic Websites
-
-High-traffic websites should batch multiple visits together and send them periodically (e.g. every 30 seconds) using `trackVisits`. This method can track pageviews, REST, MCP, ACP, and UCP calls. Here's an example with Express middleware:
+For REST implementations of ACP and UCP, include the response body in `trackPageviewOrRESTCall`.
 
 ```ts
-import express from "express"
-import { KnownAgents, type VisitRequest } from "@knownagents/sdk"
+// For ACP calls ...
 
-const app = express()
-
-const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN")
-const visits: VisitRequest[] = []
-
-app.use((request, response, next) => {
-    const created = new Date()
-
-    response.once("finish", () => {
-        visits.push({
-            request_path: request.url,
-            request_method: request.method,
-            request_headers: request.headers,
-            response_status_code: response.statusCode,
-            response_headers: response.getHeaders(),
-            response_duration_in_milliseconds: Date.now() - created.getTime(),
-            created: created.toISOString()
-        })
-    })
-
-    next()
+knownAgents.trackPageviewOrRESTCall(request, response, {
+    acpResponseBody: acpResponseBody
 })
-
-setInterval(() => {
-    const batch = visits.splice(0)
-
-    if (batch.length > 0) {
-        knownAgents.trackVisits(batch)
-    }
-}, 30000)
 ```
+
+```ts
+// For UCP calls ...
+
+knownAgents.trackPageviewOrRESTCall(request, response, {
+    ucpResponseBody: ucpResponseBody
+})
+```
+
+`trackMCPCall` will track MCP implementations of ACP and UCP automatically.
 
 ### Test Your Integration
 
@@ -140,7 +103,7 @@ setInterval(() => {
 
 If your website is correctly connected, you should see visits from a test agent in the realtime timeline within a few seconds.
 
-## How To Set Up Automatic Robots.txt ([Full Docs](https://knownagents.com/docs/robots-txt))
+## Set Up Automatic Robots.txt ([Automatic Robots.txt](https://knownagents.com/products/automatic-robots-txt))
 
 Serve a robots.txt that continuously updates with rules for new [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) as they're discovered.
 
@@ -159,7 +122,7 @@ const robotsTxt = await knownAgents.generateRobotsTXT([
 
 The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day, using a cron job). Then, serve it from your website's `/robots.txt` endpoint.
 
-## How To Use the Agent Identification API ([Full Docs](https://knownagents.com/docs/identification))
+## Use the Agent Identification API ([Agent Identification API](https://knownagents.com/products/agent-identification-api))
 
 Identify and verify [AI agents and other bots](https://knownagents.com/agents) in your own products, from incoming network requests. Authentication uses Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This API can be useful for implementing access policies based on verified agent identity or enriching your own datasets.
 

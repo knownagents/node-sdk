@@ -6,29 +6,41 @@ import type {
     AgentType,
     IdentificationRequest,
     IdentificationResult,
+    KnownAgentsOptions,
     TrackPageviewOrRESTCallOptions,
     VisitRequest
 } from "./types"
+
+const DEFAULT_FLUSH_INTERVAL_IN_MILLISECONDS = 10000
+const DEFAULT_FLUSH_QUEUE_SIZE = 1
 
 /**
  * Server-side client for Known Agents analytics, robots.txt generation, and agent identification.
  */
 export class KnownAgents {
     private readonly accessToken: string
+    private readonly flushIntervalInMilliseconds: number
+    private readonly flushQueueSize: number
+    private readonly visitQueue: VisitRequest[] = []
+    private flushTimeout: NodeJS.Timeout | undefined
+    private pendingFlushPromise: Promise<void> = Promise.resolve()
 
     /**
      * Creates a new instance of the Known Agents client.
-     * 
+     *
      * @param accessToken - Your project's access token.
+     * @param options - Optional batching configuration.
      */
-    constructor(accessToken: string) {
+    constructor(accessToken: string, options: KnownAgentsOptions = {}) {
         this.accessToken = accessToken
+        this.flushIntervalInMilliseconds = options.flushIntervalInMilliseconds ?? DEFAULT_FLUSH_INTERVAL_IN_MILLISECONDS
+        this.flushQueueSize = options.flushQueueSize ?? DEFAULT_FLUSH_QUEUE_SIZE
     }
 
     /**
      * Tracks a single non-MCP pageview or REST API call for analytics.
-     * The visit is sent after the response finishes so status, headers, and duration are included.
-     * This method is non-blocking and handles errors internally.
+     * The visit is added to the visit event queue after the response finishes so status, headers, and duration are included.
+     * This method is non-blocking and handles upload errors internally.
      *
      * @param request - The incoming Node.js HTTP request.
      * @param response - The outgoing Node.js HTTP response.
@@ -74,7 +86,7 @@ export class KnownAgents {
      * Tracks a single MCP call handled by `StreamableHTTPServerTransport`.
      * Call this after connecting the transport and before the transport processes the request so request and response metadata can be captured.
      * Do not use this with transport instances shared across concurrent requests; use `trackVisits()` instead.
-     * This method is non-blocking and handles errors internally.
+     * This method is non-blocking and handles upload errors internally.
      *
      * @param request - The incoming Node.js HTTP request.
      * @param response - The outgoing Node.js HTTP response.
@@ -98,7 +110,7 @@ export class KnownAgents {
             mcpRequestBody = message
             originalTransportOnMessage?.(message, extra)
         }
-    
+
         const originalTransportSend = transport.send
         transport.send = async (message, options): Promise<void> => {
             mcpResponseBody = message
@@ -118,7 +130,6 @@ export class KnownAgents {
             }
 
             const responseDurationInMilliseconds = Date.now() - created.getTime()
-            const mcpResponseResult = mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result
 
             const visitRequest: VisitRequest = {
                 request_path: path,
@@ -134,8 +145,8 @@ export class KnownAgents {
                 mcp_response_result_is_error: mcpResponseBody.result?.isError,
                 mcp_response_error_code: mcpResponseBody.error?.code,
                 mcp_response_error_message: mcpResponseBody.error?.message,
-                acp_response_body: getIsACPCall(request.headers) ? mcpResponseResult : undefined,
-                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseResult : undefined,
+                acp_response_body: getIsACPCall(request.headers) ? mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result : undefined,
+                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result : undefined,
                 created: created.toISOString()
             }
 
@@ -148,11 +159,11 @@ export class KnownAgents {
             response.once("finish", sendVisit)
         }
     }
-    
+
     /**
-     * Tracks multiple visits in a batch for analytics.
-     * This method is non-blocking and handles errors internally.
-     * Recommended for high-traffic websites - batch visits and send periodically (e.g. every 30 seconds).
+     * Adds multiple visits to the visit event queue for analytics.
+     * This method is non-blocking and handles upload errors internally.
+     * All visit events are uploaded together when the queue size reaches the configured threshold or the flush interval elapses.
      *
      * @param requests - An array of visits.
      */
@@ -173,18 +184,41 @@ export class KnownAgents {
             return
         }
 
-        fetch("https://api.knownagents.com/visits", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${this.accessToken}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(filteredRequests)
-        }).catch(error => {
-            console.error(`Known Agents failed to track visits: ${error.message}`)
-        })
+        this.visitQueue.push(...filteredRequests)
+
+        if (this.visitQueue.length >= this.flushQueueSize) {
+            void this.flush()
+            return
+        }
+
+        this.scheduleFlush()
     }
-    
+
+    /**
+     * Uploads all events currently in the visit event queue and waits for pending uploads to finish.
+     * This method handles upload errors internally.
+     *
+     * @returns A promise that resolves after all pending upload attempts finish.
+     */
+    flush(): Promise<void> {
+        if (this.flushTimeout) {
+            clearTimeout(this.flushTimeout)
+            this.flushTimeout = undefined
+        }
+
+        const requests = this.visitQueue.splice(0)
+
+        if (requests.length === 0) {
+            return this.pendingFlushPromise
+        }
+
+        this.pendingFlushPromise = this.pendingFlushPromise.then(() => {
+            return this.sendVisits(requests)
+        })
+
+        return this.pendingFlushPromise
+    }
+
     /**
      * Generates a robots.txt file that disallows the specified agent types.
      * The generated file stays up-to-date with all current and future agents in the specified categories.
@@ -214,7 +248,7 @@ export class KnownAgents {
             throw new Error(`Known Agents failed to generate robots.txt: ${response.status} ${response.statusText}`)
         }
     }
-    
+
     /**
      * Identifies and verifies a single agent from an HTTP request.
      * Uses Web Bot Auth (HTTP message signatures), IP matching, or other available methods.
@@ -272,4 +306,36 @@ export class KnownAgents {
         }
     }
 
+    private scheduleFlush(): void {
+        if (this.flushTimeout) {
+            return
+        }
+
+        this.flushTimeout = setTimeout(() => {
+            this.flushTimeout = undefined
+            void this.flush()
+        }, this.flushIntervalInMilliseconds)
+
+        this.flushTimeout.unref()
+    }
+
+    private async sendVisits(requests: VisitRequest[]): Promise<void> {
+        try {
+            const response = await fetch("https://api.knownagents.com/visits", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${this.accessToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requests)
+            })
+
+            if (!response.ok) {
+                throw new Error(`${response.status} ${response.statusText}`)
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            console.error(`Known Agents failed to track visits: ${message}`)
+        }
+    }
 }

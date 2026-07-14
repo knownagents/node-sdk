@@ -1,6 +1,16 @@
 import type { IncomingHttpHeaders, OutgoingHttpHeaders } from "http"
 
 /**
+ * Batching configuration for the Known Agents client.
+ */
+export interface KnownAgentsOptions {
+    /** The maximum time a partial visit event queue waits before upload. Defaults to 10,000 milliseconds. */
+    flushIntervalInMilliseconds?: number
+    /** The number of visit events in the queue that triggers an upload. Defaults to 1. */
+    flushQueueSize?: number
+}
+
+/**
  * Additional metadata to include when tracking a pageview or REST API call.
  */
 export interface TrackPageviewOrRESTCallOptions {
@@ -12,7 +22,7 @@ export interface TrackPageviewOrRESTCallOptions {
 
 /**
  * A normalized visit payload for the Known Agents API.
- * Use this with `trackVisits()` when batching requests yourself.
+ * Use this with `trackVisits()` to manually add visit events to the queue.
  */
 export interface VisitRequest {
     /** The URL path and query string of the request (e.g. "/about?foo=bar") */
