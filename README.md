@@ -138,28 +138,40 @@ Call `identifyAgents` to identify multiple requests at once:
 const identifications = await knownAgents.identifyAgents([
     {
         id: "request-1",
-        request_headers: request1.headers
+        request_headers: request1.headers,
+        request_path: request1.url
     },
     {
         id: "request-2",
-        request_headers: request2.headers
+        request_headers: request2.headers,
+        request_path: request2.url
     }
 ])
 ```
 
 These methods return an object (or array of objects) with the following fields:
 
-- `id`: The identifier from the request (if provided)
+- `id`: The identifier from the request (if provided).
 - `result`: The identification result:
-  - `"verified"`: The agent was identified and verified
-  - `"verification_failed"`: The agent was identified but failed verification (it was spoofed)
-  - `"not_verifiable"`: The agent was identified but could not be verified (no method available)
-  - `"unknown_agent"`: Not an agent, or the agent is not in the database
-- `agent_id`: The unique ID of the agent (if identified)
-- `agent_token`: The name of the agent (e.g. `"Claude-User"`) (if identified)
-- `agent_url`: The documentation URL of the agent (if identified)
-- `agent_type_name`: The type of agent (e.g. `"AI Assistant"`) (if identified)
-- `operator_name`: The company operating the agent (e.g. `"Anthropic"`) (if identified)
+  - `"verified"`: A known agent was identified and verified
+  - `"verification_failed"`: A known agent was identified, but failed verification
+  - `"not_verifiable"`: A known agent was identified, but no verification method was available
+  - `"not_identified"`: No known agent was identified
+- `agent_id`: The unique ID of the identified agent.
+- `agent_token`: The name of the agent (e.g. `"Claude-User"`) (if identified).
+- `agent_url`: The documentation URL of the agent (if identified).
+- `agent_type_name`: The type of agent (e.g. `"AI Assistant"`) (if identified).
+- `operator_name`: The company operating the agent (e.g. `"Anthropic"`) (if identified).
+- `is_disallowed_by_robots_txt`: Whether the identified agent is disallowed by robots.txt from accessing the `request_path`.
+- `asn`: The autonomous system number associated with the request's IPv4 address.
+- `asn_operator`: The operator of the recognized autonomous system associated with the request's IPv4 address.
+- `asn_type`: The type of the recognized autonomous system associated with the request's IPv4 address:
+  - `"isp"`
+  - `"hosting"`
+  - `"business"`
+  - `"education"`
+  - `"government"`
+- `automation_score`: An integer from `0` to `99` indicating the strength of heuristic evidence that the request was made by an automated client. Higher scores indicate stronger detected automation signals. A score of `0` means that no automation signals were detected, not that the client is certainly human.
 
 ## Requirements
 

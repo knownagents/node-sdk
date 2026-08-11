@@ -68,32 +68,51 @@ export interface IdentificationRequest {
     id?: string
     /** The HTTP request headers. Sensitive headers are removed before sending. */
     request_headers: IncomingHttpHeaders
+    /** The path of the incoming request (e.g. `"/products/123"`). */
+    request_path?: string
 }
 
 /**
  * The result of an agent identification request.
  */
 export interface IdentificationResult {
-    /** The identifier from the request (if provided) */
+    /** The identifier from the request (if provided). */
     id?: string
     /**
      * The identification result:
-     * - "verified": The agent was identified and verified
-     * - "verification_failed": The agent was identified but failed verification (spoofed)
-     * - "unknown_agent": The request is from an unrecognized agent or human
-     * - "not_verifiable": The agent was identified but cannot be verified
+     * - "verified": A known agent was identified and verified
+     * - "verification_failed": A known agent was identified, but failed verification
+     * - "not_verifiable": A known agent was identified, but no verification method was available
+     * - "not_identified": No known agent was identified
      */
-    result: "verified" | "verification_failed" | "unknown_agent" | "not_verifiable"
-    /** The unique ID of the identified agent */
+    result: "verified" | "verification_failed" | "not_verifiable" | "not_identified"
+    /** The unique ID of the identified agent. */
     agent_id?: string
-    /** The name of the identified agent (e.g. "Googlebot") */
+    /** The name of the agent (e.g. `"Claude-User"`) (if identified). */
     agent_token?: string
-    /** The documentation URL for the identified agent */
+    /** The documentation URL of the agent (if identified). */
     agent_url?: string
-    /** The type of the identified agent (e.g. "AI Agent", "Search Engine Crawler") */
+    /** The type of agent (e.g. `"AI Assistant"`) (if identified). */
     agent_type_name?: string
-    /** The company behind the identified agent (e.g. "Google") */
+    /** The company operating the agent (e.g. `"Anthropic"`) (if identified). */
     operator_name?: string
+    /** Whether the identified agent is disallowed by robots.txt from accessing the `request_path`. */
+    is_disallowed_by_robots_txt?: boolean
+    /** The autonomous system number associated with the request's IPv4 address. */
+    asn?: number
+    /** The operator of the recognized autonomous system associated with the request's IPv4 address. */
+    asn_operator?: string
+    /**
+     * The type of the recognized autonomous system associated with the request's IPv4 address:
+     * - "isp"
+     * - "hosting"
+     * - "business"
+     * - "education"
+     * - "government"
+     */
+    asn_type?: "isp" | "hosting" | "business" | "education" | "government"
+    /** An integer from `0` to `99` indicating the strength of heuristic evidence that the request was made by an automated client. Higher scores indicate stronger detected automation signals. A score of `0` means that no automation signals were detected, not that the client is certainly human. */
+    automation_score?: number
 }
 
 /**

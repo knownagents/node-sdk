@@ -265,7 +265,8 @@ export class KnownAgents {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                request_headers: getFilteredHeaders(request.headers)
+                request_headers: getFilteredHeaders(request.headers),
+                request_path: request.url
             })
         })
 
@@ -291,7 +292,7 @@ export class KnownAgents {
                 "Authorization": `Bearer ${this.accessToken}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(requests.map(request => {
+            body: JSON.stringify(requests.map((request) => {
                 return {
                     ...request,
                     request_headers: getFilteredHeaders(request.request_headers),
