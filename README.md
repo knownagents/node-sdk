@@ -137,41 +137,56 @@ Call `identifyAgents` to identify multiple requests at once:
 ```ts
 const identifications = await knownAgents.identifyAgents([
     {
-        id: "request-1",
+        request_id: "request-1",
         request_headers: request1.headers,
         request_path: request1.url
     },
     {
-        id: "request-2",
+        request_id: "request-2",
         request_headers: request2.headers,
         request_path: request2.url
     }
 ])
 ```
 
+Identification requests accept the following fields:
+
+- `request_id`: A string identifier that will be echoed back in the response. Include this when sending an array to match each result to its request.
+- `request_headers` (required): An object containing all available HTTP request headers, including `user-agent` when present, any IP-related headers like `x-forwarded-for` or `x-real-ip`, and HTTP message signature headers like `signature-input`, `signature`, and `signature-agent`.
+- `request_ip`: The transport-level IP address of the incoming request. Used as a fallback when a valid client IP address cannot be derived from `request_headers`.
+- `request_path`: The path of the incoming request (e.g. `"/products/123"`).
+
 These methods return an object (or array of objects) with the following fields:
 
-- `id`: The identifier from the request (if provided).
+- `request_id`: The identifier from the request (if provided).
 - `result`: The identification result:
-  - `"verified"`: A known agent was identified and verified
-  - `"verification_failed"`: A known agent was identified, but failed verification
-  - `"not_verifiable"`: A known agent was identified, but no verification method was available
-  - `"not_identified"`: No known agent was identified
+  - `"verified"`: A known agent was identified and verified (its identity was confirmed as authentic)
+  - `"verification_failed"`: A known agent was identified, but failed verification (its identity may have been spoofed)
+  - `"not_verifiable"`: A known agent was identified, but its operator does not provide a known verification method
+  - `"not_identified"`: No known agent was identified (the request may have come from a human)
 - `agent_id`: The unique ID of the identified agent.
 - `agent_token`: The name of the agent (e.g. `"Claude-User"`) (if identified).
 - `agent_url`: The documentation URL of the agent (if identified).
 - `agent_type_name`: The type of agent (e.g. `"AI Assistant"`) (if identified).
 - `operator_name`: The company operating the agent (e.g. `"Anthropic"`) (if identified).
 - `is_disallowed_by_robots_txt`: Whether the identified agent is disallowed by robots.txt from accessing the `request_path`.
-- `asn`: The autonomous system number associated with the request's IPv4 address.
-- `asn_operator`: The operator of the recognized autonomous system associated with the request's IPv4 address.
-- `asn_type`: The type of the recognized autonomous system associated with the request's IPv4 address:
+- `asn`: The autonomous system number associated with the request's IP address.
+- `asn_operator`: The operator of the recognized autonomous system associated with the request's IP address.
+- `asn_type`: The type of the recognized autonomous system associated with the request's IP address:
   - `"isp"`
   - `"hosting"`
   - `"business"`
   - `"education"`
   - `"government"`
 - `automation_score`: An integer from `0` to `99` indicating the strength of heuristic evidence that the request was made by an automated client. Higher scores indicate stronger detected automation signals. A score of `0` means that no automation signals were detected, not that the client is certainly human.
+- `automation_signals`: Specific automation signals detected for the request. Available to Enterprise plans upon request:
+  - `"known_agent_ip"`: The request came from an IP address associated with a known agent, although no specific agent was identified
+  - `"inconsistency"`: The request contained inconsistent client or browser attributes
+  - `"non_browser"`: The request appears to have been made by a non-browser HTTP client
+  - `"automated_browser"`: The request contains indicators of browser automation
+  - `"cloud_service_provider"`: The request came from cloud or hosting infrastructure
+
+See the [Agent Identification REST API documentation](https://knownagents.com/docs/identification/rest-api) for the canonical API reference.
 
 ## Requirements
 

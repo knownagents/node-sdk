@@ -266,6 +266,7 @@ export class KnownAgents {
             },
             body: JSON.stringify({
                 request_headers: getFilteredHeaders(request.headers),
+                request_ip: request.socket.remoteAddress,
                 request_path: request.url
             })
         })

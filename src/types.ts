@@ -64,10 +64,12 @@ export interface VisitRequest {
  * Used for batch agent identification with `identifyAgents()`.
  */
 export interface IdentificationRequest {
-    /** An identifier that will be echoed back in the response to match requests with results */
-    id?: string
-    /** The HTTP request headers. Sensitive headers are removed before sending. */
+    /** A string identifier that will be echoed back in the response. Include this when sending an array to match each result to its request. */
+    request_id?: string
+    /** An object containing all available HTTP request headers, including `user-agent` when present, any IP-related headers like `x-forwarded-for` or `x-real-ip`, and HTTP message signature headers like `signature-input`, `signature`, and `signature-agent`. */
     request_headers: IncomingHttpHeaders
+    /** The transport-level IP address of the incoming request. Used as a fallback when a valid client IP address cannot be derived from `request_headers`. */
+    request_ip?: string
     /** The path of the incoming request (e.g. `"/products/123"`). */
     request_path?: string
 }
@@ -77,13 +79,13 @@ export interface IdentificationRequest {
  */
 export interface IdentificationResult {
     /** The identifier from the request (if provided). */
-    id?: string
+    request_id?: string
     /**
      * The identification result:
-     * - "verified": A known agent was identified and verified
-     * - "verification_failed": A known agent was identified, but failed verification
-     * - "not_verifiable": A known agent was identified, but no verification method was available
-     * - "not_identified": No known agent was identified
+     * - "verified": A known agent was identified and verified (its identity was confirmed as authentic)
+     * - "verification_failed": A known agent was identified, but failed verification (its identity may have been spoofed)
+     * - "not_verifiable": A known agent was identified, but its operator does not provide a known verification method
+     * - "not_identified": No known agent was identified (the request may have come from a human)
      */
     result: "verified" | "verification_failed" | "not_verifiable" | "not_identified"
     /** The unique ID of the identified agent. */
@@ -98,12 +100,12 @@ export interface IdentificationResult {
     operator_name?: string
     /** Whether the identified agent is disallowed by robots.txt from accessing the `request_path`. */
     is_disallowed_by_robots_txt?: boolean
-    /** The autonomous system number associated with the request's IPv4 address. */
+    /** The autonomous system number associated with the request's IP address. */
     asn?: number
-    /** The operator of the recognized autonomous system associated with the request's IPv4 address. */
+    /** The operator of the recognized autonomous system associated with the request's IP address. */
     asn_operator?: string
     /**
-     * The type of the recognized autonomous system associated with the request's IPv4 address:
+     * The type of the recognized autonomous system associated with the request's IP address:
      * - "isp"
      * - "hosting"
      * - "business"
@@ -113,6 +115,21 @@ export interface IdentificationResult {
     asn_type?: "isp" | "hosting" | "business" | "education" | "government"
     /** An integer from `0` to `99` indicating the strength of heuristic evidence that the request was made by an automated client. Higher scores indicate stronger detected automation signals. A score of `0` means that no automation signals were detected, not that the client is certainly human. */
     automation_score?: number
+    /**
+     * Specific automation signals detected for the request. Available to Enterprise plans upon request:
+     * - "known_agent_ip": The request came from an IP address associated with a known agent, although no specific agent was identified
+     * - "inconsistency": The request contained inconsistent client or browser attributes
+     * - "non_browser": The request appears to have been made by a non-browser HTTP client
+     * - "automated_browser": The request contains indicators of browser automation
+     * - "cloud_service_provider": The request came from cloud or hosting infrastructure
+     */
+    automation_signals?: Array<
+        "known_agent_ip"
+        | "inconsistency"
+        | "non_browser"
+        | "automated_browser"
+        | "cloud_service_provider"
+    >
 }
 
 /**
