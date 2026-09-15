@@ -40,7 +40,7 @@ export interface VisitRequest {
     /** The MCP JSON-RPC request method */
     mcp_request_method?: string
     /** The MCP request tool name */
-    mcp_request_tool_name?: string
+    mcp_request_name?: string
     /** The MCP request client name */
     mcp_request_client_info_name?: string
     /** The MCP request client version */

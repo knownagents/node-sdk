@@ -139,14 +139,14 @@ export class KnownAgents {
                 response_headers: response.getHeaders(),
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
                 mcp_request_method: mcpRequestBody.method,
-                mcp_request_tool_name: mcpRequestBody.params?.name,
+                mcp_request_name: mcpRequestBody.params?.name,
                 mcp_request_client_info_name: mcpRequestBody.params?.clientInfo?.name,
                 mcp_request_client_info_version: mcpRequestBody.params?.clientInfo?.version,
                 mcp_response_result_is_error: mcpResponseBody.result?.isError,
                 mcp_response_error_code: mcpResponseBody.error?.code,
                 mcp_response_error_message: mcpResponseBody.error?.message,
-                acp_response_body: getIsACPCall(request.headers) ? mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result : undefined,
-                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseBody.result?.structuredContent ?? mcpResponseBody.result : undefined,
+                acp_response_body: getIsACPCall(request.headers) ? mcpResponseBody.result : undefined,
+                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseBody.result : undefined,
                 created: created.toISOString()
             }
 

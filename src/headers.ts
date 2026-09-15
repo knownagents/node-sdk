@@ -50,7 +50,7 @@ export function getIsUCPCall(headers: IncomingHttpHeaders): boolean {
 }
 
 export function getIsACPCall(headers: IncomingHttpHeaders): boolean {
-    return !getIsUCPCall(headers) && Object.keys(headers).some((key) => {
+    return Object.keys(headers).some((key) => {
         return key.toLowerCase() === "api-version"
     })
 }
