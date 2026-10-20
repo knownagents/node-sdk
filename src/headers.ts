@@ -25,6 +25,25 @@ const filteredHeaderNames = [
     "private-token"
 ]
 
+export function getHeaderValue(headers: IncomingHttpHeaders | OutgoingHttpHeaders, name: string): string | undefined {
+    const normalizedName = name.toLowerCase()
+    const headerName = Object.keys(headers).find((candidate) => {
+        return candidate.toLowerCase() === normalizedName
+    })
+
+    if (!headerName) {
+        return undefined
+    }
+
+    const headerValue = headers[headerName]
+
+    if (Array.isArray(headerValue)) {
+        return headerValue[0]
+    }
+
+    return headerValue?.toString()
+}
+
 export function getFilteredHeaders<Headers extends IncomingHttpHeaders | OutgoingHttpHeaders>(headers: Headers): Headers {
     const filteredHeaders = { ...headers }
 

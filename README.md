@@ -72,8 +72,7 @@ const mcpHandler = createMcpHandler(({ requestInfo }) => {
         knownAgents.trackVisit(requestInfo, undefined, {
             mcp: {
                 context: context,
-                result: result,
-                toolName: "ping"
+                result: result
             }
         })
 

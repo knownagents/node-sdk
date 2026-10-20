@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http"
 import { CLIENT_INFO_META_KEY, type Implementation } from "@modelcontextprotocol/server"
-import { getFilteredHeaders } from "./headers"
+import { getFilteredHeaders, getHeaderValue } from "./headers"
 import { getIsPathExcluded } from "./paths"
 import type {
     AgentType,
@@ -13,7 +13,7 @@ import type {
 
 const DEFAULT_FLUSH_INTERVAL_IN_MILLISECONDS = 10000
 const DEFAULT_FLUSH_QUEUE_SIZE = 1
-const NODE_PACKAGE_VERSION = "3.0.0"
+const NODE_PACKAGE_VERSION = "3.1.0"
 
 /**
  * Server-side client for Known Agents analytics, robots.txt generation, and agent identification.
@@ -49,7 +49,8 @@ export class KnownAgents {
      */
     trackVisit(request: IncomingMessage | Request, response?: ServerResponse | Response, options?: TrackVisitOptions): void {
         const url = request instanceof Request ? new URL(request.url) : undefined
-        const requestHeaders = request instanceof Request ? Object.fromEntries(request.headers.entries()) : request.headers
+        const requestHeaders = request instanceof Request ? Object.fromEntries(request.headers) : request.headers
+        const mcpRequestName = getHeaderValue(requestHeaders, "mcp-name")
         const path = url ? `${url.pathname}${url.search}` : request.url
         const method = request.method
 
@@ -76,7 +77,7 @@ export class KnownAgents {
                 response_headers: responseHeaders,
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
                 mcp_request_method: mcp?.context?.mcpReq.method,
-                mcp_request_name: mcp?.toolName,
+                mcp_request_name: mcpRequestName,
                 mcp_request_client_info_name: clientInfo?.name,
                 mcp_request_client_info_version: clientInfo?.version,
                 mcp_response_result_is_error: mcp?.result?.isError,

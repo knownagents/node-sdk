@@ -19,7 +19,6 @@ export interface TrackVisitOptions {
     mcp?: {
         context?: ServerContext
         result?: CallToolResult
-        toolName?: string
     }
     acp?: {
         responseBody: Record<string, unknown>
