@@ -1,4 +1,5 @@
 import type { IncomingHttpHeaders, OutgoingHttpHeaders } from "http"
+import type { CallToolResult, ServerContext } from "@modelcontextprotocol/server"
 
 /**
  * Batching configuration for the Known Agents client.
@@ -11,18 +12,25 @@ export interface KnownAgentsOptions {
 }
 
 /**
- * Additional metadata to include when tracking a pageview or REST API call.
+ * Additional metadata to include when tracking a visit.
  */
-export interface TrackPageviewOrRESTCallOptions {
-    /** The ACP response body. */
-    acpResponseBody?: Record<string, unknown>
-    /** The UCP response body. */
-    ucpResponseBody?: Record<string, unknown>
+export interface TrackVisitOptions {
+    responseDurationInMilliseconds?: number
+    mcp?: {
+        context?: ServerContext
+        result?: CallToolResult
+        toolName?: string
+    }
+    acp?: {
+        responseBody: Record<string, unknown>
+    }
+    ucp?: {
+        responseBody: Record<string, unknown>
+    }
 }
 
 /**
- * A normalized visit payload for the Known Agents API.
- * Use this with `trackVisits()` to manually add visit events to the queue.
+ * The normalized visit payload sent to the Known Agents API.
  */
 export interface VisitRequest {
     /** The URL path and query string of the request (e.g. "/about?foo=bar") */
@@ -47,10 +55,6 @@ export interface VisitRequest {
     mcp_request_client_info_version?: string
     /** Whether the MCP response result is an error */
     mcp_response_result_is_error?: boolean
-    /** The MCP response error code */
-    mcp_response_error_code?: number
-    /** The MCP response error message */
-    mcp_response_error_message?: string
     /** The ACP response body */
     acp_response_body?: Record<string, unknown>
     /** The UCP response body */

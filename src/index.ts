@@ -4,6 +4,5 @@ export {
     type IdentificationRequest,
     type IdentificationResult,
     type KnownAgentsOptions,
-    type TrackPageviewOrRESTCallOptions,
-    type VisitRequest
+    type TrackVisitOptions
 } from "./types"

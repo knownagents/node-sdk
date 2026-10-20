@@ -1,6 +1,6 @@
 {
   "name": "@knownagents/sdk",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "The official Node.js SDK for Known Agents: AI agent analytics (bot traffic), LLM referral tracking, automatic robots.txt, agent identification",
   "publishConfig": {
     "access": "public"
@@ -59,13 +59,13 @@
   },
   "homepage": "https://github.com/knownagents/node-sdk#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
     "@types/node": "^22.19.17",
-    "typescript": "^5.8.2"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/server": "^2.3.1"
   }
 }

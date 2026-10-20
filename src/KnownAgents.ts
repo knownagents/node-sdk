@@ -1,18 +1,19 @@
 import type { IncomingMessage, ServerResponse } from "http"
-import type { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import { getFilteredHeaders, getIsACPCall, getIsMCPCall, getIsUCPCall } from "./headers"
+import { CLIENT_INFO_META_KEY, type Implementation } from "@modelcontextprotocol/server"
+import { getFilteredHeaders } from "./headers"
 import { getIsPathExcluded } from "./paths"
 import type {
     AgentType,
     IdentificationRequest,
     IdentificationResult,
     KnownAgentsOptions,
-    TrackPageviewOrRESTCallOptions,
+    TrackVisitOptions,
     VisitRequest
 } from "./types"
 
 const DEFAULT_FLUSH_INTERVAL_IN_MILLISECONDS = 10000
 const DEFAULT_FLUSH_QUEUE_SIZE = 1
+const NODE_PACKAGE_VERSION = "3.0.0"
 
 /**
  * Server-side client for Known Agents analytics, robots.txt generation, and agent identification.
@@ -38,62 +39,18 @@ export class KnownAgents {
     }
 
     /**
-     * Tracks a single non-MCP pageview or REST API call for analytics.
-     * The visit is added to the visit event queue after the response finishes so status, headers, and duration are included.
+     * Tracks a single pageview or API call for analytics.
+     * For Node.js responses, the visit is added to the visit event queue after the response finishes so status, headers, and duration are included.
      * This method is non-blocking and handles upload errors internally.
      *
-     * @param request - The incoming Node.js HTTP request.
-     * @param response - The outgoing Node.js HTTP response.
-     * @param options - Optional ACP or UCP response metadata for REST API calls.
+     * @param request - The incoming HTTP request.
+     * @param response - The outgoing HTTP response.
+     * @param options - Optional protocol metadata.
      */
-    trackPageviewOrRESTCall(request: IncomingMessage, response: ServerResponse, options?: TrackPageviewOrRESTCallOptions): void {
-        const isMCPCall = getIsMCPCall(request.headers)
-        const path = request.url
-        const method = request.method
-
-        if (isMCPCall || !path || getIsPathExcluded(path) || !method) {
-            return
-        }
-
-        const created = new Date()
-
-        const sendVisit = () => {
-            const responseDurationInMilliseconds = Date.now() - created.getTime()
-
-            const visitRequest: VisitRequest = {
-                request_path: path,
-                request_method: method,
-                request_headers: request.headers,
-                response_status_code: response?.statusCode,
-                response_headers: response.getHeaders(),
-                response_duration_in_milliseconds: responseDurationInMilliseconds,
-                acp_response_body: options?.acpResponseBody,
-                ucp_response_body: options?.ucpResponseBody,
-                created: created.toISOString()
-            }
-
-            this.trackVisits([visitRequest])
-        }
-
-        if (response.writableEnded) {
-            sendVisit()
-        } else {
-            response.once("finish", sendVisit)
-        }
-    }
-
-    /**
-     * Tracks a single MCP call handled by `StreamableHTTPServerTransport`.
-     * Call this after connecting the transport and before the transport processes the request so request and response metadata can be captured.
-     * Do not use this with transport instances shared across concurrent requests; use `trackVisits()` instead.
-     * This method is non-blocking and handles upload errors internally.
-     *
-     * @param request - The incoming Node.js HTTP request.
-     * @param response - The outgoing Node.js HTTP response.
-     * @param transport - The MCP streamable HTTP transport handling the request.
-     */
-    trackMCPCall(request: IncomingMessage, response: ServerResponse, transport: StreamableHTTPServerTransport): void {
-        const path = request.url
+    trackVisit(request: IncomingMessage | Request, response?: ServerResponse | Response, options?: TrackVisitOptions): void {
+        const url = request instanceof Request ? new URL(request.url) : undefined
+        const requestHeaders = request instanceof Request ? Object.fromEntries(request.headers.entries()) : request.headers
+        const path = url ? `${url.pathname}${url.search}` : request.url
         const method = request.method
 
         if (!path || getIsPathExcluded(path) || !method) {
@@ -102,55 +59,38 @@ export class KnownAgents {
 
         const created = new Date()
 
-        let mcpRequestBody: any
-        let mcpResponseBody: any
-
-        const originalTransportOnMessage = transport.onmessage
-        transport.onmessage = (message, extra): void => {
-            mcpRequestBody = message
-            originalTransportOnMessage?.(message, extra)
-        }
-
-        const originalTransportSend = transport.send
-        transport.send = async (message, options): Promise<void> => {
-            mcpResponseBody = message
-            await originalTransportSend.call(transport, message, options)
-        }
-
-        const restoreTransport = () => {
-            transport.onmessage = originalTransportOnMessage
-            transport.send = originalTransportSend
-        }
-
         const sendVisit = () => {
-            restoreTransport()
-
-            if (!mcpRequestBody || !mcpResponseBody) {
-                return
-            }
-
-            const responseDurationInMilliseconds = Date.now() - created.getTime()
+            const responseHeaders = response instanceof Response ? Object.fromEntries(response.headers.entries()) : response?.getHeaders() ?? {}
+            const responseStatusCode = response instanceof Response ? response.status : response?.statusCode
+            const responseDurationInMilliseconds = options?.responseDurationInMilliseconds ?? (!response || response instanceof Response ? undefined : Date.now() - created.getTime())
+            const mcp = options?.mcp
+            const clientInfo = (mcp?.context?.mcpReq.envelope as {
+                [CLIENT_INFO_META_KEY]?: Implementation
+            } | undefined)?.[CLIENT_INFO_META_KEY]
 
             const visitRequest: VisitRequest = {
                 request_path: path,
                 request_method: method,
-                request_headers: request.headers,
-                response_status_code: response?.statusCode,
-                response_headers: response.getHeaders(),
+                request_headers: requestHeaders,
+                response_status_code: responseStatusCode,
+                response_headers: responseHeaders,
                 response_duration_in_milliseconds: responseDurationInMilliseconds,
-                mcp_request_method: mcpRequestBody.method,
-                mcp_request_name: mcpRequestBody.params?.name,
-                mcp_request_client_info_name: mcpRequestBody.params?.clientInfo?.name,
-                mcp_request_client_info_version: mcpRequestBody.params?.clientInfo?.version,
-                mcp_response_result_is_error: mcpResponseBody.result?.isError,
-                mcp_response_error_code: mcpResponseBody.error?.code,
-                mcp_response_error_message: mcpResponseBody.error?.message,
-                acp_response_body: getIsACPCall(request.headers) ? mcpResponseBody.result : undefined,
-                ucp_response_body: getIsUCPCall(request.headers) ? mcpResponseBody.result : undefined,
+                mcp_request_method: mcp?.context?.mcpReq.method,
+                mcp_request_name: mcp?.toolName,
+                mcp_request_client_info_name: clientInfo?.name,
+                mcp_request_client_info_version: clientInfo?.version,
+                mcp_response_result_is_error: mcp?.result?.isError,
+                acp_response_body: options?.acp?.responseBody,
+                ucp_response_body: options?.ucp?.responseBody,
                 created: created.toISOString()
             }
 
-            this.trackVisits([visitRequest])
+            this.enqueueVisit(visitRequest)
+        }
+
+        if (!response || response instanceof Response) {
+            sendVisit()
+            return
         }
 
         if (response.writableEnded) {
@@ -158,40 +98,6 @@ export class KnownAgents {
         } else {
             response.once("finish", sendVisit)
         }
-    }
-
-    /**
-     * Adds multiple visits to the visit event queue for analytics.
-     * This method is non-blocking and handles upload errors internally.
-     * All visit events are uploaded together when the queue size reaches the configured threshold or the flush interval elapses.
-     *
-     * @param requests - An array of visits.
-     */
-    trackVisits(requests: VisitRequest[]): void {
-        const filteredRequests = requests
-            .filter((request) => {
-                return !getIsPathExcluded(request.request_path)
-            })
-            .map((request) => {
-                return {
-                    ...request,
-                    request_headers: getFilteredHeaders(request.request_headers),
-                    response_headers: request.response_headers ? getFilteredHeaders(request.response_headers) : undefined,
-                }
-            })
-
-        if (filteredRequests.length === 0) {
-            return
-        }
-
-        this.visitQueue.push(...filteredRequests)
-
-        if (this.visitQueue.length >= this.flushQueueSize) {
-            void this.flush()
-            return
-        }
-
-        this.scheduleFlush()
     }
 
     /**
@@ -238,7 +144,8 @@ export class KnownAgents {
             },
             body: JSON.stringify({
                 agent_types: agentTypes,
-                disallow: disallow
+                disallow: disallow,
+                node_package_version: NODE_PACKAGE_VERSION
             })
         })
 
@@ -267,7 +174,8 @@ export class KnownAgents {
             body: JSON.stringify({
                 request_headers: getFilteredHeaders(request.headers),
                 request_ip: request.socket.remoteAddress,
-                request_path: request.url
+                request_path: request.url,
+                node_package_version: NODE_PACKAGE_VERSION
             })
         })
 
@@ -297,6 +205,7 @@ export class KnownAgents {
                 return {
                     ...request,
                     request_headers: getFilteredHeaders(request.request_headers),
+                    node_package_version: NODE_PACKAGE_VERSION
                 }
             }))
         })
@@ -306,6 +215,21 @@ export class KnownAgents {
         } else {
             throw new Error(`Known Agents failed to identify agents: ${response.status} ${response.statusText}`)
         }
+    }
+
+    private enqueueVisit(request: VisitRequest): void {
+        this.visitQueue.push({
+            ...request,
+            request_headers: getFilteredHeaders(request.request_headers),
+            response_headers: request.response_headers ? getFilteredHeaders(request.response_headers) : undefined,
+        })
+
+        if (this.visitQueue.length >= this.flushQueueSize) {
+            void this.flush()
+            return
+        }
+
+        this.scheduleFlush()
     }
 
     private scheduleFlush(): void {
@@ -329,7 +253,12 @@ export class KnownAgents {
                     "Authorization": `Bearer ${this.accessToken}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(requests)
+                body: JSON.stringify(requests.map((request) => {
+                    return {
+                        ...request,
+                        node_package_version: NODE_PACKAGE_VERSION
+                    }
+                }))
             })
 
             if (!response.ok) {

@@ -33,79 +33,84 @@ const knownAgents = new KnownAgents("YOUR_ACCESS_TOKEN", {
 
 The entire visit event queue is uploaded when it reaches `flushQueueSize` or when the flush interval elapses after the first visit event enters an empty queue.
 
-## Send Visit Events ([Agent Analytics](https://knownagents.com/products/agent-analytics), [LLM Referral Tracking](https://knownagents.com/products/llm-referral-tracking))
-
-Get realtime insight into how [AI agents and other bots](https://knownagents.com/agents) browse your web pages, call your [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) endpoints, and purchase products through your [ACP (Agentic Commerce Protocol)](https://www.agenticcommerce.dev/) and [UCP (Universal Commerce Protocol)](https://ucp.dev/) shopping flows. Measure human traffic from AI chat and search platforms like ChatGPT, Claude, and Gemini.
-
-### Pageviews and REST Calls
-
-Call `trackPageviewOrRESTCall` with the incoming request and outgoing response. If you can, do this in middleware. This method skips MCP calls automatically.
+Before your application shuts down, call `flush` to upload any queued visit events:
 
 ```ts
-knownAgents.trackPageviewOrRESTCall(request, response)
+await knownAgents.flush()
 ```
 
-### MCP Calls (Optional)
+## Track Pageviews and API Calls ([Agent Analytics](https://knownagents.com/products/agent-analytics), [LLM Referral Tracking](https://knownagents.com/products/llm-referral-tracking))
 
-For MCP servers that use `StreamableHTTPServerTransport`, call `trackMCPCall` after connecting the transport and before the transport handles the request.
+Get realtime insight into how [AI agents and other bots](https://knownagents.com/agents) browse your web pages, use your [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server, and purchase products through your [ACP](https://www.agenticcommerce.dev/) (Agentic Commerce Protocol) and [UCP](https://ucp.dev/) (Universal Commerce Protocol) shopping flows. Measure human traffic from AI chat and search platforms like ChatGPT, Claude, and Gemini.
+
+Call `trackVisit` with the incoming request and outgoing response.
 
 ```ts
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-
-// ...
-
-const mcpServer = new McpServer({
-    name: SERVER_NAME,
-    version: SERVER_VERSION,
-})
-
-const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined
-})
-
-// ...
-
-await mcpServer.connect(transport)
-
-knownAgents.trackMCPCall(request, response, transport)
-
-await transport.handleRequest(request, response, parsedBody)
+knownAgents.trackVisit(request, response)
 ```
 
-### Agentic Commerce Interactions (Optional)
+If you can, do this in middleware.
 
-For REST implementations of ACP and UCP, include the response body in `trackPageviewOrRESTCall`.
+### MCP
+
+For MCP endpoints, call `trackVisit` from each tool handler.
+
+```ts
+import { createMcpHandler, McpServer } from "@modelcontextprotocol/server"
+
+const mcpHandler = createMcpHandler(({ requestInfo }) => {
+    const server = new McpServer({
+        name: SERVER_NAME,
+        version: SERVER_VERSION,
+    })
+
+    server.registerTool("ping", { description: "Check whether the server is available" }, async (context) => {
+        const result = {
+            content: [{ type: "text", text: "pong" }]
+        }
+
+        knownAgents.trackVisit(requestInfo, undefined, {
+            mcp: {
+                context: context,
+                result: result,
+                toolName: "ping"
+            }
+        })
+
+        return result
+    })
+
+    return server
+})
+```
+
+### Agentic Commerce
+
+For ACP and UCP endpoints, include the response body in `trackVisit`.
 
 ```ts
 // For ACP calls ...
 
-knownAgents.trackPageviewOrRESTCall(request, response, {
-    acpResponseBody: acpResponseBody
+knownAgents.trackVisit(request, response, {
+    acp: {
+        responseBody: acpResponseBody
+    }
 })
 ```
 
 ```ts
 // For UCP calls ...
 
-knownAgents.trackPageviewOrRESTCall(request, response, {
-    ucpResponseBody: ucpResponseBody
+knownAgents.trackVisit(request, response, {
+    ucp: {
+        responseBody: ucpResponseBody
+    }
 })
 ```
 
-`trackMCPCall` will track MCP implementations of ACP and UCP automatically.
+## Serve an Automatic Robots.txt ([Automatic Robots.txt](https://knownagents.com/products/automatic-robots-txt))
 
-### Test Your Integration
-
-- Open your project's settings page
-- Click **Send a Test Visit**
-- Click **Realtime**
-
-If your website is correctly connected, you should see visits from a test agent in the realtime timeline within a few seconds.
-
-## Set Up Automatic Robots.txt ([Automatic Robots.txt](https://knownagents.com/products/automatic-robots-txt))
-
-Serve a robots.txt that continuously updates with rules for new [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) as they're discovered.
+Generate a robots.txt that continuously updates with rules for new [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) as they're discovered.
 
 Use the `generateRobotsTXT` method. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
 
@@ -122,7 +127,7 @@ const robotsTxt = await knownAgents.generateRobotsTXT([
 
 The return value is a plain text robots.txt string. Generate a `robotsTxt` periodically (e.g. once per day, using a cron job). Then, serve it from your website's `/robots.txt` endpoint.
 
-## Use the Agent Identification API ([Agent Identification API](https://knownagents.com/products/agent-identification-api))
+## Identify & Verify Agents ([Agent Identification](https://knownagents.com/products/agent-identification-api))
 
 Identify and verify [AI agents and other bots](https://knownagents.com/agents) in your own products, from incoming network requests. Authentication uses Web Bot Auth (HTTP message signatures), IP matching, or other available methods. This API can be useful for implementing access policies based on verified agent identity or enriching your own datasets.
 
@@ -194,7 +199,7 @@ TypeScript >= 4.7 is supported.
 
 The following runtimes are supported:
 
-- Node.js 18 LTS or later ([non-EOL](https://endoflife.date/nodejs))
+- Node.js 20 or later (Node.js 24 LTS recommended)
 
 ## Support
 

@@ -36,21 +36,3 @@ export function getFilteredHeaders<Headers extends IncomingHttpHeaders | Outgoin
 
     return filteredHeaders
 }
-
-export function getIsMCPCall(headers: IncomingHttpHeaders): boolean {
-    return Object.keys(headers).some((key) => {
-        return key.toLowerCase() === "mcp-protocol-version"
-    })
-}
-
-export function getIsUCPCall(headers: IncomingHttpHeaders): boolean {
-    return Object.keys(headers).some((key) => {
-        return key.toLowerCase() === "ucp-agent"
-    })
-}
-
-export function getIsACPCall(headers: IncomingHttpHeaders): boolean {
-    return Object.keys(headers).some((key) => {
-        return key.toLowerCase() === "api-version"
-    })
-}
