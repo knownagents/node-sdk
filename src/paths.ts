@@ -1,4 +1,4 @@
-export function getIsPathExcluded(path: string): boolean {
+export function isPathExcluded(path: string): boolean {
     const pathWithoutQueryString = path.split(/[?#]/)[0]
     const lowercasedPath = pathWithoutQueryString.toLowerCase()
 

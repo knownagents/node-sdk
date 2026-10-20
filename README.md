@@ -111,12 +111,12 @@ knownAgents.trackVisit(request, response, {
 
 Generate a robots.txt that continuously updates with rules for new [crawlers, scrapers, AI agents, and other bots](https://knownagents.com/agents) as they're discovered.
 
-Use the `generateRobotsTXT` method. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
+Use the `generateRobotsTxt` method. Select which `AgentType`s you want to block, and a string specifying which URLs are disallowed (e.g. `"/"` to disallow all paths).
 
 ```ts
 import { AgentType } from "@knownagents/sdk"
 
-const robotsTxt = await knownAgents.generateRobotsTXT([
+const robotsTxt = await knownAgents.generateRobotsTxt([
     AgentType.AIDataScraper,
     AgentType.AIDataProvider,
     AgentType.Scraper,

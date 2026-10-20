@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "http"
 import { CLIENT_INFO_META_KEY, type Implementation } from "@modelcontextprotocol/server"
-import { getFilteredHeaders, getHeaderValue } from "./headers"
-import { getIsPathExcluded } from "./paths"
+import { filterHeaders, getHeaderValue } from "./headers"
+import { isPathExcluded } from "./paths"
 import type {
     AgentType,
     IdentificationRequest,
@@ -54,7 +54,7 @@ export class KnownAgents {
         const path = url ? `${url.pathname}${url.search}` : request.url
         const method = request.method
 
-        if (!path || getIsPathExcluded(path) || !method) {
+        if (!path || isPathExcluded(path) || !method) {
             return
         }
 
@@ -136,7 +136,7 @@ export class KnownAgents {
      * @returns A promise that resolves to the generated robots.txt content as a string.
      * @throws {Error} If the API call fails or returns a non-200 status.
      */
-    async generateRobotsTXT(agentTypes: AgentType[], disallow: string = "/"): Promise<string> {
+    async generateRobotsTxt(agentTypes: AgentType[], disallow: string = "/"): Promise<string> {
         const response = await fetch("https://api.knownagents.com/robots-txts", {
             method: "POST",
             headers: {
@@ -173,7 +173,7 @@ export class KnownAgents {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                request_headers: getFilteredHeaders(request.headers),
+                request_headers: filterHeaders(request.headers),
                 request_ip: request.socket.remoteAddress,
                 request_path: request.url,
                 node_package_version: NODE_PACKAGE_VERSION
@@ -205,7 +205,7 @@ export class KnownAgents {
             body: JSON.stringify(requests.map((request) => {
                 return {
                     ...request,
-                    request_headers: getFilteredHeaders(request.request_headers),
+                    request_headers: filterHeaders(request.request_headers),
                     node_package_version: NODE_PACKAGE_VERSION
                 }
             }))
@@ -221,8 +221,8 @@ export class KnownAgents {
     private enqueueVisit(request: VisitRequest): void {
         this.visitQueue.push({
             ...request,
-            request_headers: getFilteredHeaders(request.request_headers),
-            response_headers: request.response_headers ? getFilteredHeaders(request.response_headers) : undefined,
+            request_headers: filterHeaders(request.request_headers),
+            response_headers: request.response_headers ? filterHeaders(request.response_headers) : undefined,
         })
 
         if (this.visitQueue.length >= this.flushQueueSize) {
